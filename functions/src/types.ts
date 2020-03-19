@@ -1,3 +1,4 @@
+// Slack Conversation
 export interface Conversation {
     id: string,
     name: string,
@@ -35,6 +36,7 @@ export interface Conversation {
     locale: string
 }
 
+// Slack user profile
 export interface UserProfile {
     avatar_hash: string,
     status_text: string,
@@ -53,4 +55,20 @@ export interface UserProfile {
     image_192: string,
     image_512: string,
     team: string
+}
+
+export interface Partner {
+    name: string,
+    url?: string,
+}
+
+export interface ProjectInfo {
+    name: string,
+    repository: string,
+    slackChannel: string,
+    elevatorPitch?: string,
+    partner?: Partner[],
+    welcome?: string,
+    technologies?: string,
+    hangoutsSlug?: string
 }
