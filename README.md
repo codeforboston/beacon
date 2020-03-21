@@ -14,6 +14,9 @@ If you're deploying to a project other than `cfb-services`, run `firebase use
 --add` to select the Firebase project to use interactively or `firebase use
 <id>` if you already know the id.
 
+**You must use a project with billing enabled!** Otherwise, the cloud functions
+will not be able to fetch data from external sites.
+
 ### Install node dependencies
 
 In the `functions` directory, run `npm install`.
