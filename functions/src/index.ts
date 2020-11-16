@@ -3,16 +3,18 @@ import fetch from 'node-fetch';
 import { WebClient } from '@slack/web-api';
 import { PubSub } from '@google-cloud/pubsub';
 
-import { KnownBlock } from '@slack/types';
+import { KnownBlock, SectionBlock } from '@slack/types';
 
 import * as util from './util';
 import { Conversation, Partner, ProjectInfo } from './types';
 
 const Client = new WebClient(functions.config().slack.token);
+import config from './config';
+
 const PubSubClient = new PubSub();
 
-const PROJECTS_YAML_URL = 'https://raw.githubusercontent.com/codeforboston/codeforboston.org/master/_data/projects/active.yml';
-const PROJECTS_URL = 'https://www.codeforboston.org/projects/';
+const PROJECTS_YAML_URL = config.dataURL;
+const PROJECTS_URL = config.websiteURL;
 
 
 const Projects: {[k in string]: Promise<ProjectInfo[]>} = {};
@@ -66,19 +68,17 @@ function partnersList(partners: Partner[]) {
     return partners.map(p => p.url ? `<${p.url}|${p.name}>` : p.name).join(', ');
 }
 
-const fields: [keyof ProjectInfo, string, ((val: any) => string)][] = [
-    ['technologies', 'Tech Stack', tech => tech],
-    ['slackChannel', 'Channel', channel => `#${channel}`],
-    ['repository', 'Repo', url => `<${url}>`],
-];
+const SummaryFields = util.prepFields(config.summaryFields);
+const DetailedFields = util.prepFields(config.detailedFields);
 
-function formatProject(project: ProjectInfo, detailed=false): KnownBlock {
+function formatProject(project: any, detailed=false): KnownBlock {
     if (!detailed) {
         const pieces = [`*${project.name}*`];
-        if (project.slackChannel)
-            pieces.push(`Channel: #${project.slackChannel}`);
-        if (project.repository)
-            pieces.push(`Repo: <${project.repository}>`);
+
+        for (const {key, name, format} of SummaryFields) {
+            if (project[key])
+                pieces.push(`${name || util.decamel(key)}: ${format(project[key])}`);
+        }
         return {
             type: 'section',
             text: {
@@ -88,27 +88,32 @@ function formatProject(project: ProjectInfo, detailed=false): KnownBlock {
         };
     }
 
-    const desc = project.elevatorPitch || (project.partner && `A project in partnership with ${partnersList(project.partner)}`);
+    const desc = project[config.descriptionField || 'description'] ||
+        (project.partner && `A project in partnership with ${partnersList(project.partner)}`);
+
+    const fields: SectionBlock['fields'] = [];
+
+    for (const {key, name, format} of DetailedFields) {
+        if (!project[key]) continue;
+        fields.push(
+            {
+                type: 'mrkdwn',
+                text: `*${name}*`
+            },
+            {
+                type: 'mrkdwn',
+                text: format(project)
+            }
+        )
+    }
+
     return {
         type: 'section',
         text: {
             type: 'mrkdwn',
             text: `*${project.name}*\n${desc}`,
         },
-        fields: Array.prototype.concat.apply([], fields
-                                             .filter(([key]) => !!project[key])
-                                             .map(
-                                                 ([key, name, fn]) => ([
-                                                     {
-                                                         type: 'mrkdwn',
-                                                         text: `*${name}*`
-                                                     },
-                                                     {
-                                                         type: 'mrkdwn',
-                                                         text: fn(project[key])
-                                                     }
-                                                 ])
-                                             ))
+        fields
     };
 }
 
@@ -130,13 +135,13 @@ async function postProjectsInfo(user: string, channel: string, detailed=false) {
     await Client.chat.postEphemeral({
         user,
         channel,
-        text: `Welcome to the Code for Boston Slack! You can check <${PROJECTS_URL}|our website> for a list of active projects.`,
+        text: config.welcomePlainMessage,
         blocks: [
             {
                 type: 'section',
                 text: {
                     type: 'mrkdwn',
-                    text: `Welcome to the Code for Boston Slack! Here's a list of our active projects to help you get started. If you find one that interests you, hop in the channel and introduce yourself!`
+                    text: config.welcomeMessage
                 }
             },
             ...blocks,
