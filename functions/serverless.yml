@@ -1,0 +1,38 @@
+service: beacon-cfb
+
+frameworkVersion: '2'
+
+provider:
+  name: aws
+  profile: cfb
+  runtime: nodejs12.x
+  stage: ${opt:stage, 'dev'}
+  environment:
+    GITHUB_WEBHOOK_SECRET: ${ssm:/beacon/${opt:stage, 'dev'}/github/secret~true}
+    SLACK_TOKEN: ${ssm:/beacon/${opt:stage, 'dev'}/slack/token~true}
+    SLACK_SECRET: ${ssm:/beacon/${opt:stage, 'dev'}/slack/signing_secret~true}
+    QUEUE_NAME:  cfb-beacon-${opt:stage, 'dev'}.fifo
+
+functions:
+  handleWebhook:
+    handler: handler.handleWebhook
+    events:
+      - http:
+          path: /webhook
+          method: POST
+  handleSlackMessage:
+    handler: handler.handleSlackMessage
+    events:
+      - sqs:
+          arn:
+            Fn::Join:
+              - ':'
+              - - arn
+                - aws
+                - sqs
+                - Ref: AWS::Region
+                - Ref: AWS::AccountId
+                - cfb-beacon-${self:provider.stage}.fifo
+
+plugins:
+  - serverless-webpack

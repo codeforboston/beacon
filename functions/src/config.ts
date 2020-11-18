@@ -1,7 +1,16 @@
 const DATA_URL = 'https://raw.githubusercontent.com/codeforboston/codeforboston.org/master/_data/projects/active.yml';
 const PROJECTS_URL = 'https://www.codeforboston.org/projects/';
 
+
+const {
+  GITHUB_WEBHOOK_SECRET, SLACK_TOKEN, SLACK_SECRET, QUEUE_NAME
+} = process.env;
+
 export default {
+  githubSecret: GITHUB_WEBHOOK_SECRET,
+  slackToken: SLACK_TOKEN,
+  slackSecret: SLACK_SECRET,
+  queueName: QUEUE_NAME,
   dataURL: DATA_URL,
   websiteURL: PROJECTS_URL,
   descriptionField: 'elevatorPitch',

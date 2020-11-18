@@ -3,11 +3,7 @@
   "scripts": {
     "lint": "tslint --project tsconfig.json",
     "build": "tsc",
-    "serve": "npm run build && firebase serve --only functions",
-    "shell": "npm run build && firebase functions:shell",
-    "start": "npm run shell",
-    "deploy": "firebase deploy --only functions",
-    "logs": "firebase functions:log",
+    "serve": "npm run build",
     "experiment": "node script/slack_ids.js"
   },
   "engines": {
@@ -22,16 +18,17 @@
     "@types/node-fetch": "^2.5.5",
     "@types/tsscmp": "^1.0.0",
     "@types/yaml": "^1.2.0",
-    "firebase-admin": "^8.6.0",
-    "firebase-functions": "^3.3.0",
+    "aws-sdk": "^2.793.0",
     "node-fetch": "^2.6.0",
     "tsscmp": "^1.0.6",
     "yaml": "^1.8.2"
   },
   "devDependencies": {
-    "firebase-functions-test": "^0.1.6",
+    "serverless-webpack": "^5.3.5",
+    "ts-loader": "^8.0.11",
     "tslint": "^5.20.1",
-    "typescript": "^3.2.2"
+    "typescript": "^3.2.2",
+    "webpack": "^5.5.1"
   },
   "private": true
 }

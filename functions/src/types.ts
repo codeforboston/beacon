@@ -72,3 +72,11 @@ export interface ProjectInfo {
   technologies?: string,
   hangoutsSlug?: string
 }
+
+export type APIGatewayEvent = {
+  path: string,
+  httpMethod: string,
+  headers: { [k in string]: string },
+  queryStringParameters: string,
+  body: string
+};

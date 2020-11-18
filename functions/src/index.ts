@@ -1,20 +1,21 @@
-import * as functions from 'firebase-functions';
 import fetch from 'node-fetch';
 import { WebClient } from '@slack/web-api';
-import { PubSub } from '@google-cloud/pubsub';
+import AWS from 'aws-sdk';
 
 import { KnownBlock, SectionBlock } from '@slack/types';
 
 import * as util from './util';
 import { Conversation, Partner, ProjectInfo } from './types';
 
-const Client = new WebClient(functions.config().slack.token);
 import config from './config';
 
-const PubSubClient = new PubSub();
+const Client = new WebClient(config.slackToken);
 
 const PROJECTS_YAML_URL = config.dataURL;
-const PROJECTS_URL = config.websiteURL;
+// const PROJECTS_URL = config.websiteURL;
+
+
+const SQS = new AWS.SQS({ apiVersion: '2012-11-05' });
 
 
 const Projects: {[k in string]: Promise<ProjectInfo[]>} = {};
@@ -224,6 +225,7 @@ async function memberJoined(event: MemberJoinedEvent) {
 }
 
 async function projectsCommand(command: CommandEvent) {
+  console.log('command:', command);
   await fetch(command.response_url, {
     method: 'POST',
     headers: { 'Content-type': 'application/json' },
@@ -234,41 +236,52 @@ async function projectsCommand(command: CommandEvent) {
   });
 }
 
-export const handleMessage = functions.pubsub.topic('slack-message')
-  .onPublish(async (message, context) => {
-    const { event, command } = message.json;
-
-    try {
-      if (event) {
-        console.log('received event', JSON.stringify(event));
-        if (event.type === 'member_joined_channel') {
-          await memberJoined(event);
-        }
-      } else if (command) {
-        console.log('received command', JSON.stringify(message.json));
-        await projectsCommand(message.json);
+export const handleMessage = (async (message: any) => {
+  const { event } = message;
+  try {
+    if (event) {
+      console.log('received event', JSON.stringify(event));
+      if (event.type === 'member_joined_channel') {
+        await memberJoined(event);
       }
-    } catch (err) {
-      console.log(err?.data);
-      throw err;
+    } else if (message.command) {
+      await projectsCommand(message);
     }
+  } catch (err) {
+    console.log(err?.data);
+    throw err;
+  }
   });
 
-export const handleRequest = functions.https.onRequest(async (req, res) => {
+export const handleRequest = async (req: util.ReqLike, queueURL: string) => {
   if (req.body.challenge) {
     console.log('responding to challenge');
-    res.send({ challenge: req.body.challenge });
-    return;
+    return {
+      statusCode: 200,
+      headers: { 'Content-type': 'application/json' },
+      body: JSON.stringify({ challenge: req.body.challenge })
+    };
   }
 
-  if (!util.verifySlackRequest(req, functions.config().slack?.signing_secret)) {
+  if (!util.verifySlackRequest(req, config.slackSecret)) {
     console.warn('Got a bad request', JSON.stringify(req.body));
-    res.status(403).send('Invalid signature');
-    return;
+    return {
+      statusCode: 403,
+      body: 'Invalid signature'
+    };
   }
 
-  await PubSubClient.topic('slack-message')
-    .publish(Buffer.from(JSON.stringify(req.body)));
+  await SQS.sendMessage({
+    QueueUrl: queueURL,
+    MessageBody: JSON.stringify(req.body),
+    MessageAttributes: {
+      topic: {
+        DataType: 'String',
+        StringValue: 'slack-message'
+      }
+    },
+    MessageGroupId: 'slack-queue'
+  }).promise();
 
-  res.sendStatus(200);
-});
+  return { statusCode: 201 };
+};
