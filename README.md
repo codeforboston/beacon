@@ -1,25 +1,38 @@
-## Firebase setup
+## AWS Setup
 
-### Firebase CLI
+### Requirements
 
-[Install](https://firebase.google.com/docs/cli/) the Firebase command line
-tools. There are a few installation options. `npm install -g firebase-tools` is
-perhaps the simplest for people reading this.
+Install the [AWS command line tools](https://aws.amazon.com/cli/)
 
-### Firebase config
+### Create an SQS Queue
 
-`cd` to the root of this repository and run `firebase login`.
+When creating the new queue:
 
-If you're deploying to a project other than `cfb-services`, run `firebase use
---add` to select the Firebase project to use interactively or `firebase use
-<id>` if you already know the id.
+Enable *Content-based deduplication*. In the GUI, it's shown as a checkbox in
+the *Configuration* section. If you're using the CLI, set
+`ContentBasedDeduplication` to `true` in your attributes map.
 
-**You must use a project with billing enabled!** Otherwise, the cloud functions
-will not be able to fetch data from external sites.
+Include the following in the access policy document's `Statements` array:
 
-### Install node dependencies
+```json
+    {
+      "Sid": "__lambdaPolicy",
+      "Action": [
+        "sqs:SendMessage"
+      ],
+      "Effect": "Allow",
+      "Resource": "arn:aws:sqs:us-east-1:136974406105:cfb-beacon-dev.fifo",
+      "Principal": {
+        "AWS": [
+          "arn:aws:iam::<ACCOUNT_ID>:role/beacon-cfb-<STAGE>-<REGION>-lambdaRole"
+        ]
+      }
+    }
+```
 
-In the `functions` directory, run `npm install`.
+(Be sure to replace `ACCOUNT_ID` with your AWS account ID and `STAGE` and
+`REGION` with deployment stage ('dev' by default) and region of the lambda
+function.)
 
 ## Slack Setup
 
@@ -31,18 +44,25 @@ secret and a token.
 You'll find the signing secret under **Basic Information**.
 
 Under **OAuth & Permissions**, create a token by installing the new app in your
-workspace. This will be your `BOT_OAUTH_TOKEN`. It usually starts with `xoxp`
+workspace. This will be your `BOT_OAUTH_TOKEN`. It usually starts with `xoxp` or
 `xoxb`.
 
 On the command line, in root of this project, run:
 
-bash```
-firebase functions:config:set slack.token=BOT_OAUTH_TOKEN
-firebase functions:config:set slack.signing_secret=SIGNING_SECRET
+```bash
+aws ssm put-parameter --name "/beacon/dev/slack/token" --value "BOT_OAUTH_TOKEN" --type SecureString
+aws ssm put-parameter --name "/beacon/dev/slack/secret" --value "SIGNING_SECRET" --type SecureString
+aws ssm put-parameter --name "/beacon/dev/github/secret" --value "GITHUB_SECRET" --type SecureString
 ```
 
 with the appropriate values substituted.
 
 ## Deploying
 
-From the root directory, run `firebase deploy`
+Install `serverless` (e.g., with `npm install -g serverless`)
+
+Switch to the `functions` directory.
+
+Run `npm install`.
+
+Run `serverless deploy -s prod`. If you omit the stage, it will default to `dev`.
