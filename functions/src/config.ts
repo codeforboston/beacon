@@ -15,8 +15,8 @@ export default {
   websiteURL: PROJECTS_URL,
   descriptionField: 'elevatorPitch',
   summaryFields: [
-    { key: 'slackChannel', format: '#{slackChannel}' },
-    { key: 'repository', name: 'Repo', format: '<{repository}' },
+    { key: 'slackChannel', name: 'Channel', format: '#{slackChannel}' },
+    { key: 'repository', name: 'Repo', format: '<{repository}>' },
   ],
   detailedFields: [
     { key: 'technologies', name: 'Tech Stack' },

@@ -3,10 +3,12 @@ import { APIGatewayEvent } from './src/types';
 import * as beacon from './src';
 import * as $u from './src/util';
 
-export const handleSlackMessage = async (event: any, _context: any) => {
+export const handleQueue = async (event: any, _context: any) => {
   console.log('event', event);
   for (const record of event.Records) {
-    await beacon.handleMessage(JSON.parse(record.body));
+    if (record.attributes.MessageGroupId === 'slack-queue') {
+      await beacon.handleSlackMessage(JSON.parse(record.body));
+    }
   }
 };
 

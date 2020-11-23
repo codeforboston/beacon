@@ -69,16 +69,18 @@ function partnersList(partners: Partner[]) {
   return partners.map(p => p.url ? `<${p.url}|${p.name}>` : p.name).join(', ');
 }
 
-const SummaryFields = util.prepFields(config.summaryFields);
-const DetailedFields = util.prepFields(config.detailedFields);
+type ProjectFields = { name: string, format: util.Formatter<ProjectInfo>, key: keyof ProjectInfo }[];
 
-function formatProject(project: any, detailed=false): KnownBlock {
+const SummaryFields = util.prepFields(config.summaryFields) as ProjectFields;
+const DetailedFields = util.prepFields(config.detailedFields) as ProjectFields;
+
+function formatProject(project: ProjectInfo, detailed=false): KnownBlock {
   if (!detailed) {
     const pieces = [`*${project.name}*`];
 
     for (const {key, name, format} of SummaryFields) {
       if (project[key])
-        pieces.push(`${name || util.decamel(key)}: ${format(project[key])}`);
+        pieces.push(`${name || util.decamel(key)}: ${format(project)}`);
     }
     return {
       type: 'section',
@@ -89,7 +91,7 @@ function formatProject(project: any, detailed=false): KnownBlock {
     };
   }
 
-  const desc = project[config.descriptionField || 'description'] ||
+  const desc = project[(config.descriptionField as keyof ProjectInfo) || 'description'] ||
     (project.partner && `A project in partnership with ${partnersList(project.partner)}`);
 
   const fields: SectionBlock['fields'] = [];
@@ -212,7 +214,7 @@ async function memberJoined(event: MemberJoinedEvent) {
     throw new Error(response.error);
 
   // If the member joined a project channel, send a channel-specific greeting
-  const channel: Conversation = response.channel as any;
+  const channel = response.channel as Conversation;
   const project = projects.get(channel.name) || projects.get(channel.name_normalized);
   console.info(`Looked up project info for channel: ${channel.name}:`, project);
   if (project) {
@@ -236,7 +238,7 @@ async function projectsCommand(command: CommandEvent) {
   });
 }
 
-export const handleMessage = (async (message: any) => {
+export const handleSlackMessage = (async (message: any) => {
   const { event } = message;
   try {
     if (event) {
@@ -283,5 +285,13 @@ export const handleRequest = async (req: util.ReqLike, queueURL: string) => {
     MessageGroupId: 'slack-queue'
   }).promise();
 
-  return { statusCode: 201 };
+  if (req.body.command) {
+    return {
+      statusCode: 200,
+      headers: { 'Content-type': 'application/json' },
+      body: JSON.stringify({ text: 'Loading project list...' })
+    };
+  } else {
+    return { statusCode: 201 };
+  }
 };

@@ -60,11 +60,9 @@ export async function getProjects(url: string): Promise<ProjectInfo[]> {
   return YAML.parse(await response.text());
 }
 
-
-
 const format = (s: string, vars: any) => s.replace(/\{([\w._]+)\}/g, (_, n) => vars[n]);
 
-type Formatter = (data: any) => string;
+export type Formatter<T=any> = (data: T) => string;
 
 export function makeFormatter(input: string | Formatter): Formatter {
   if (typeof input === 'function')
@@ -73,13 +71,14 @@ export function makeFormatter(input: string | Formatter): Formatter {
   return (data) => format(input, data);
 }
 
+export const title = (s: string) => s.slice(0, 1).toUpperCase() + s.slice(1);
 export const decamel = (s: string) => s.replace(/([^A-Z])([A-Z])/gu, '$1 $2');
 
 type FieldConfig = { key: string, name?: string, format?: string|Formatter };
 export const prepFields = (fields: FieldConfig[]) => fields.map(field => ({
   ...field,
   format: field.format ? makeFormatter(field.format) : ((d: any) => `${d[field.key]}`),
-  name: field.name || decamel(field.key)
+  name: field.name || title(decamel(field.key) )
 }));
 
 export function parseFormBody(body: string): any {

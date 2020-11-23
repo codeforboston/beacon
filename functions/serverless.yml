@@ -12,6 +12,17 @@ provider:
     SLACK_TOKEN: ${ssm:/beacon/${opt:stage, 'dev'}/slack/token~true}
     SLACK_SECRET: ${ssm:/beacon/${opt:stage, 'dev'}/slack/signing_secret~true}
     QUEUE_NAME:  cfb-beacon-${opt:stage, 'dev'}.fifo
+  iamRoleStatements:
+    - Effect: 'Allow'
+      Action:
+        - 'sqs:SendMessage'
+      Resource:
+        Fn::Join:
+          - ':'
+          - - arn:aws:sqs
+            - Ref: AWS::Region
+            - Ref: AWS::AccountId
+            - cfb-beacon-${self:provider.stage}.fifo
 
 functions:
   handleWebhook:
@@ -20,8 +31,8 @@ functions:
       - http:
           path: /webhook
           method: POST
-  handleSlackMessage:
-    handler: handler.handleSlackMessage
+  handleQueue:
+    handler: handler.handleQueue
     events:
       - sqs:
           arn:
