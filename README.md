@@ -4,6 +4,13 @@
 
 Install the [AWS command line tools](https://aws.amazon.com/cli/)
 
+### Credentials
+
+Set up a named [AWS
+profile](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-profiles.html)
+called `cfb` with an access key id and secret from AWS IAM. You may need to
+create a new user in IAM with the ability to create and manage CloudFormation stacks.
+
 ### Create an SQS Queue
 
 When creating the new queue:
@@ -12,27 +19,10 @@ Enable *Content-based deduplication*. In the GUI, it's shown as a checkbox in
 the *Configuration* section. If you're using the CLI, set
 `ContentBasedDeduplication` to `true` in your attributes map.
 
-Include the following in the access policy document's `Statements` array:
-
-```json
-    {
-      "Sid": "__lambdaPolicy",
-      "Action": [
-        "sqs:SendMessage"
-      ],
-      "Effect": "Allow",
-      "Resource": "arn:aws:sqs:us-east-1:136974406105:cfb-beacon-dev.fifo",
-      "Principal": {
-        "AWS": [
-          "arn:aws:iam::<ACCOUNT_ID>:role/beacon-cfb-<STAGE>-<REGION>-lambdaRole"
-        ]
-      }
-    }
 ```
-
-(Be sure to replace `ACCOUNT_ID` with your AWS account ID and `STAGE` and
-`REGION` with deployment stage ('dev' by default) and region of the lambda
-function.)
+export AWS_PROFILE=cfb
+aws sqs create-queue --queue-name "cfb-beacon-dev.fifo" --attributes '{ "MessageRetentionPeriod":"7200","FifoQueue":"true","ContentBasedDeduplication":"true" }'
+```
 
 ## Slack Setup
 
