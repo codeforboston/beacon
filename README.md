@@ -47,6 +47,27 @@ aws ssm put-parameter --name "/beacon/dev/github/secret" --value "GITHUB_SECRET"
 
 with the appropriate values substituted.
 
+## Google Sheets Setup
+
+On the Google Cloud console, go to [Service
+Accounts](https://console.cloud.google.com/iam-admin/serviceaccounts/) and
+create a new service account. Do not grant the account any permissions (roles)
+during this stage of setup.
+
+### Create Key
+
+Go to the **Keys** tab and press **Add Key** then **Create new key**. Select
+**JSON** as the key type. Move the downloaded file to the `functions` directory
+and rename it `service-account.json`.
+
+### Sheets: Add service account as editor
+
+Copy the fully qualified email address for the new service account. It will look
+something like **service-account-name@project-name.iam.gserviceaccount.com**.
+
+In the RSVPs spreadsheet, open the sharing preferences and add the service
+account email as an Editor.
+
 ## Deploying
 
 Install `serverless` (e.g., with `npm install -g serverless`)
