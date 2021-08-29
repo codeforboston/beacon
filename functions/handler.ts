@@ -27,3 +27,10 @@ export const handleWebhook = (event: APIGatewayEvent, context: any) => {
 
   return beacon.handleRequest(req, queueUrl);
 };
+
+export const handleInPersonReminder = async (_event: any, _context: any) => {
+  await require('./src/modules/inPerson').sendReminder({
+    client: beacon.Client,
+    channel: process.env['CHECKINS_CHANNEL'] || 'beacon-test',
+  });
+}

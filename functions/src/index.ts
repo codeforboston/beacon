@@ -1,6 +1,5 @@
-import fetch from 'node-fetch';
 import { WebClient } from '@slack/web-api';
-import AWS from 'aws-sdk';
+import SQSClient from 'aws-sdk/clients/sqs';
 
 import { KnownBlock, SectionBlock } from '@slack/types';
 
@@ -9,13 +8,13 @@ import { Conversation, Partner, ProjectInfo } from './types';
 
 import config from './config';
 
-const Client = new WebClient(config.slackToken);
+export const Client = new WebClient(config.slackToken);
 
 const PROJECTS_YAML_URL = config.dataURL;
 // const PROJECTS_URL = config.websiteURL;
 
 
-const SQS = new AWS.SQS({ apiVersion: '2012-11-05' });
+const SQS = new SQSClient({ apiVersion: '2012-11-05' });
 
 
 const Projects: {[k in string]: Promise<ProjectInfo[]>} = {};
@@ -29,19 +28,6 @@ async function getProjectsMap() {
   return getProjects().then(ps => new Map(ps.map(p => ([p.slackChannel, p]))));
 }
 
-// const DataViews = {
-//     projects: {
-//         yaml: PROJECTS_YAML_URL,
-//         url: PROJECTS_URL
-//     },
-//     inactive: {
-//         yaml: 'https://raw.githubusercontent.com/codeforboston/codeforboston.org/master/_data/projects/inactive.yml',
-//         url: PROJECTS_URL
-//     },
-//     jobs: {
-//
-//     }
-// };
 
 // Some Slack types
 interface MemberJoinedEvent {
@@ -226,17 +212,10 @@ async function memberJoined(event: MemberJoinedEvent) {
   await postProjectsInfo(event.user, event.channel);
 }
 
-async function projectsCommand(command: CommandEvent) {
-  console.log('command:', command);
-  await fetch(command.response_url, {
-    method: 'POST',
-    headers: { 'Content-type': 'application/json' },
-    body: JSON.stringify({
-      blocks: await buildProjectsInfo({ detailed: true }),
-      replace_original: true
-    })
-  });
-}
+import { CommandRegistry } from './registry';
+const Registry = new CommandRegistry();
+import LoadProjects from './modules/projects';
+LoadProjects(Registry);
 
 export const handleSlackMessage = (async (message: any) => {
   const { event } = message;
@@ -246,8 +225,8 @@ export const handleSlackMessage = (async (message: any) => {
       if (event.type === 'member_joined_channel') {
         await memberJoined(event);
       }
-    } else if (message.command) {
-      await projectsCommand(message);
+    } else {
+      await Registry.dispatch(message, { client: Client });
     }
   } catch (err) {
     console.log(err?.data);
@@ -273,9 +252,14 @@ export const handleRequest = async (req: util.ReqLike, queueURL: string) => {
     };
   }
 
+  const textBody = (typeof req.body.payload === 'string') ?
+    req.body.payload : JSON.stringify(req.body);
+  const body = (typeof req.body.payload === 'string') ?
+    JSON.parse(req.body.payload) : req.body;
+
   await SQS.sendMessage({
     QueueUrl: queueURL,
-    MessageBody: JSON.stringify(req.body),
+    MessageBody: textBody,
     MessageAttributes: {
       topic: {
         DataType: 'String',
@@ -285,11 +269,12 @@ export const handleRequest = async (req: util.ReqLike, queueURL: string) => {
     MessageGroupId: 'slack-queue'
   }).promise();
 
-  if (req.body.command) {
+  const ackMessage = Registry.ackMessage(body);
+  if (ackMessage) {
     return {
       statusCode: 200,
       headers: { 'Content-type': 'application/json' },
-      body: JSON.stringify({ text: 'Loading project list...' })
+      body: JSON.stringify({ text: ackMessage })
     };
   } else {
     return { statusCode: 201 };

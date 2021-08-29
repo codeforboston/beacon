@@ -12,6 +12,8 @@ provider:
     SLACK_TOKEN: ${ssm:/beacon/${opt:stage, 'dev'}/slack/token~true}
     SLACK_SECRET: ${ssm:/beacon/${opt:stage, 'dev'}/slack/signing_secret~true}
     QUEUE_NAME:  cfb-beacon-${opt:stage, 'dev'}.fifo
+    SHEET_ID: 1RE3eyknILDWkZ6dE_U9wPhVQyTojNdanKIcacCHiRgA
+    CHECKINS_CHANNEL: cic-in-person
   iamRoleStatements:
     - Effect: 'Allow'
       Action:
