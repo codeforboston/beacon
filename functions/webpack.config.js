@@ -1,5 +1,6 @@
 const path = require('path');
 const slsw = require('serverless-webpack');
+const CopyPlugin = require('copy-webpack-plugin');
 
 
 module.exports = {
@@ -20,4 +21,11 @@ module.exports = {
       { test: /\.tsx?$/, loader: 'ts-loader' },
     ],
   },
+  plugins: [
+    new CopyPlugin({
+      patterns: [
+        { from: "*.json", to: "./" },
+      ],
+    }),
+  ],
 };

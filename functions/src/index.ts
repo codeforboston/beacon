@@ -217,6 +217,9 @@ const Registry = new CommandRegistry();
 import LoadProjects from './modules/projects';
 LoadProjects(Registry);
 
+import LoadInPerson from './modules/inPerson';
+LoadInPerson(Registry);
+
 export const handleSlackMessage = (async (message: any) => {
   const { event } = message;
   try {
